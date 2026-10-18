@@ -35,6 +35,7 @@ body{background:radial-gradient(circle at 1px 1px, rgba(0,0,0,.09) 1px, transpar
 .readouts{display:flex;flex-wrap:wrap;gap:4px 18px;font:11px/1 var(--mono);color:var(--lcd);margin-top:8px;letter-spacing:1px}
 .readouts b{font-weight:400;opacity:.6;margin-right:6px}
 .readouts .hot{color:#fff}
+.readouts .warn{color:#fff;background:var(--blue-dk);padding:1px 4px;border-radius:2px;margin:-1px -4px}
 .power{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(11,11,14,.86);border-radius:6px;z-index:2;color:var(--lcd);font:11px var(--mono);letter-spacing:1px}
 .power.hide{display:none}
 
@@ -181,6 +182,8 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
         <span><b>OCT</b><span id="roOct">C3</span></span>
         <span><b>VEL</b><span id="roVel">100</span></span>
         <span><b>BEND</b><span id="roBend">0</span></span>
+        <span title="Share of one CPU core the engine needs to keep up, averaged over half a second; peak is the slowest single audio callback. This is the JavaScript reference engine; the plugin's C++ will be lighter."><b>DSP</b><span id="roCpu">—</span></span>
+        <span title="Click kernels sounding right now, all voices"><b>CLICKS</b><span id="roKern">0</span></span>
       </div>
       <div class="power" id="power">
         <button class="gel" id="powerBtn" type="button">Power on</button>
@@ -263,6 +266,10 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   const SIGMAS = 3.5;           // click kernel runs ±3.5 standard deviations
   const F_CAP = 16000;          // whistle base pitch is dropped an octave above this
   const TWO_PI = 2 * Math.PI;
+  // sine table for the whistle partials and the biphonation wave (linear interpolation, error below -120 dB)
+  const SIN_N = 4096;
+  const SIN = new Float64Array(SIN_N + 2);
+  for (let i = 0; i < SIN_N + 2; i++) SIN[i] = Math.sin(TWO_PI * i / SIN_N);
 
   // ids, defaults and ranges: the one table the C++ core and the UI copy.
   // log: the knob moves logarithmically; curve: knob position^curve; step: whole steps.
@@ -384,6 +391,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       this.seed = (seed >>> 0) || 1;
       // click kernels (struct of arrays)
       this.kOn = new Uint8Array(MAX_KERNELS);
+      this.kList = new Int32Array(MAX_KERNELS); this.kN = 0;   // active kernels only
       this.kG = new Float64Array(MAX_KERNELS); this.kQ = new Float64Array(MAX_KERNELS); this.kC = new Float64Array(MAX_KERNELS);
       this.kRe = new Float64Array(MAX_KERNELS); this.kIm = new Float64Array(MAX_KERNELS);
       this.kCr = new Float64Array(MAX_KERNELS); this.kCi = new Float64Array(MAX_KERNELS);
@@ -402,7 +410,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       this.codaVowel = 0; this.prevVowel = 0; this.vw = 0; this.vwS = 0;
       this.b1a = 0; this.b1b = 0; this.b2a = 0; this.b2b = 0;
       this.wpos = 0;
-      this.kOn.fill(0);
+      this.kOn.fill(0); this.kN = 0;
       this.dx.fill(0); this.de.fill(0);
       this.fW = 0; this.rateNow = 0;
     }
@@ -433,7 +441,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       this.vel = 0.2 + 0.8 * clamp(vel / 127, 0, 1);
       if (this.stage === 0) {
         this.env = 0; this.phW = 0; this.phP = 0.999999;   // first click on the first sample
-        this.kOn.fill(0); this.dx.fill(0); this.de.fill(0);
+        this.kOn.fill(0); this.kN = 0; this.dx.fill(0); this.de.fill(0);
         this.b1a = this.b1b = this.b2a = this.b2b = 0;
       }
       this.stage = 1; this.held = true; this.age = ++e.ageCounter;
@@ -484,7 +492,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       this.clickIdx++;
     }
 
-    fire(frac) {
+    fire(frac, audible) {
       const e = this.e;
       // vowel: a new coda's first click still carries the previous coda's vowel
       if (e.codaN > 0) {
@@ -492,7 +500,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
         else this.vw = this.codaVowel;
       } else this.vw = e.sVowel;
       let slot = -1;
-      for (let i = 0; i < MAX_KERNELS; i++) if (!this.kOn[i]) { slot = i; break; }
+      if (audible && this.kN < MAX_KERNELS) for (let i = 0; i < MAX_KERNELS; i++) if (!this.kOn[i]) { slot = i; break; }
       if (slot >= 0) {
         const s = e.sigmaS, t0 = frac - SIGMAS * s;
         this.kG[slot] = Math.exp(-0.5 * t0 * t0 / (s * s));
@@ -504,6 +512,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
         this.kLeft[slot] = Math.ceil(2 * SIGMAS * s - frac) + 1;
         this.kAmp[slot] = e.jitter > 0 ? clamp(1 + e.jitter * 0.15 * this.gauss(), 0.5, 1.5) : 1;
         this.kOn[slot] = 1;
+        this.kList[this.kN++] = slot;
       }
       if (e.onsets) e.onsets.push(e.osTime - frac);
       e.pulseCount++;
@@ -552,6 +561,8 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       const pg = e.gPulse * amp, wg = e.gWhistle * amp * wNorm;
       const pL = e.panPL * pg, pR = e.panPR * pg, wL = e.panWL * wg, wR = e.panWR * wg;
       const bip = e.biphon;
+      // skip whichever lip is silent (Register at an end)
+      const pulseOn = pg > 1e-7, whistleOn = wg > 1e-9;
       // comb
       const ring = e.ringG, D = e.ipiS, D0 = 0.9 * D, mask = this.dlen - 1;
       const ringOn = ring > 0.0005;
@@ -574,18 +585,21 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
           phP -= 1;
           const frac = inc > 0 ? Math.min(0.999999, phP / inc) : 0;
           e.osTime = e.osTimeBase + j;
-          this.fire(frac);
+          this.fire(frac, pulseOn);
           phP = phP * (inc > 0 ? (incP / this.gapW) / inc : 1);
         }
+        let pulse = 0;
+        if (pulseOn) {
         let x = 0;
-        for (let k = 0; k < MAX_KERNELS; k++) {
-          if (!this.kOn[k]) continue;
+        for (let a = 0; a < this.kN;) {
+          const k = this.kList[a];
           const g = this.kG[k];
           x += g * this.kRe[k] * this.kAmp[k];
           this.kG[k] = g * this.kQ[k]; this.kQ[k] *= this.kC[k];
           const re = this.kRe[k], im = this.kIm[k], cr = this.kCr[k], ci = this.kCi[k];
           this.kRe[k] = re * cr - im * ci; this.kIm[k] = re * ci + im * cr;
-          if (--this.kLeft[k] <= 0) this.kOn[k] = 0;
+          if (--this.kLeft[k] <= 0) { this.kOn[k] = 0; this.kList[a] = this.kList[--this.kN]; continue; }
+          a++;
         }
         // multipulse: echoes at 0.9 D, then every D
         let y = x;
@@ -606,21 +620,31 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
         v3 = y - b2b; v1 = c1 * b2a + c2 * v3; v2 = b2b + c2 * b2a + c3 * v3;
         b2a = 2 * v1 - b2a; b2b = 2 * v2 - b2b;
         const bp2 = k2 * v1;
-        const pulse = (0.3 * y + 0.9 * bp1 + vw * 0.9 * bp2) * env;
+        pulse = (0.3 * y + 0.9 * bp1 + vw * 0.9 * bp2) * env;
+        }
         // whistle: sine partials via the Chebyshev recurrence
-        phW += f / srOS; if (phW >= 1) phW -= 1;
-        f += df;
-        const th = TWO_PI * phW, s1 = Math.sin(th), co = Math.cos(th), c2x = 2 * co;
-        const s2 = c2x * s1, s3 = c2x * s2 - s1, s4 = c2x * s3 - s2;
-        let w = g1 * s1 + g2 * s2 + g3 * s3 + g4 * s4;
-        if (bip > 0) w *= 1 - bip + bip * (0.5 + 0.5 * Math.cos(TWO_PI * phP));
-        w *= env;
+        let w = 0;
+        if (whistleOn) {
+          phW += f / srOS; if (phW >= 1) phW -= 1;
+          f += df;
+          let xs = phW * SIN_N, is = xs | 0, fs = xs - is;
+          const s1 = SIN[is] + (SIN[is + 1] - SIN[is]) * fs;
+          xs = (phW + 0.25) * SIN_N; if (xs >= SIN_N) xs -= SIN_N; is = xs | 0; fs = xs - is;
+          const c2x = 2 * (SIN[is] + (SIN[is + 1] - SIN[is]) * fs);
+          const s2 = c2x * s1, s3 = c2x * s2 - s1, s4 = c2x * s3 - s2;
+          w = g1 * s1 + g2 * s2 + g3 * s3 + g4 * s4;
+          if (bip > 0) {
+            let xb = (phP + 0.25) * SIN_N; xb -= SIN_N * Math.floor(xb / SIN_N); const ib = xb | 0;
+            w *= 1 - bip + bip * (0.5 + 0.5 * (SIN[ib] + (SIN[ib + 1] - SIN[ib]) * (xb - ib)));
+          }
+          w *= env;
+        }
         oL[j] += pulse * pL + w * wL;
         oR[j] += pulse * pR + w * wR;
       }
       this.env = env; this.stage = stage; this.phW = phW; this.phP = phP; this.wpos = wpos & 0x3fffffff;
       this.b1a = b1a; this.b1b = b1b; this.b2a = b2a; this.b2b = b2b;
-      if (stage === 0) { this.note = -1; this.held = false; this.kOn.fill(0); }
+      if (stage === 0) { this.note = -1; this.held = false; this.kOn.fill(0); this.kN = 0; }
     }
   }
 
@@ -644,7 +668,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       this.osL = new Float32Array(BLOCK * OS); this.osR = new Float32Array(BLOCK * OS);
       this.blkL = new Float32Array(BLOCK); this.blkR = new Float32Array(BLOCK); this.blkPos = BLOCK;
       this.dlen = 1; while (this.dlen < Math.ceil(0.0046 * this.srOS) + 8) this.dlen <<= 1;
-      this.ageCounter = 0;
+      this.ageCounter = 0; this.quietBlocks = 0;
       this.stack = [];
       this.bendNorm = 0; this.tempo = 120;
       this.dc = { xl: 0, yl: 0, xr: 0, yr: 0, R: 1 - 2 * Math.PI * 10 / sampleRate };
@@ -854,6 +878,14 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
 
     processBlock() {
       this.advanceLfos(BLOCK / this.sr);
+      const d0 = this.dc;
+      if (this.quietBlocks > 0 && !this.voices.some(v => v.stage !== 0) &&
+          Math.abs(d0.yl) < 1e-12 && Math.abs(d0.yr) < 1e-12 && Math.abs(d0.xl) < 1e-12 && Math.abs(d0.xr) < 1e-12) {
+        // idle: nothing sounds and the filters are empty; a note from silence snaps the controls anyway
+        this.blkL.fill(0); this.blkR.fill(0); d0.xl = d0.yl = d0.xr = d0.yr = 0;
+        this.info.voices = 0; this.info.idle = true;
+        return;
+      }
       this.updateControls(false);
       const nOS = BLOCK * OS, oL = this.osL, oR = this.osR;
       oL.fill(0); oR.fill(0);
@@ -865,8 +897,19 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       }
       this.osTimeBase += nOS;
       this.info.voices = count; this.info.rate = rate; this.info.whistle = wh;
-      // decimate (FIR) both channels, DC block, volume, clip
-      const L = FIR_LEN, h = this.fir, hl = this.histL, hr = this.histR, d = this.dc, vol = this.vol;
+      const d = this.dc;
+      // silence: once a whole block has passed with no voices, the filter history is all zeros,
+      // so skip the decimation until a note starts (the DC blocker's tail must have died out too)
+      if (count === 0 && this.quietBlocks > 0 && Math.abs(d.yl) < 1e-12 && Math.abs(d.yr) < 1e-12 && Math.abs(d.xl) < 1e-12 && Math.abs(d.xr) < 1e-12) {
+        this.blkL.fill(0); this.blkR.fill(0);
+        d.xl = d.yl = d.xr = d.yr = 0;
+        this.info.idle = true;
+        return;
+      }
+      this.quietBlocks = count === 0 ? this.quietBlocks + 1 : 0;
+      this.info.idle = false;
+      // decimate (FIR, symmetric: half the multiplies) both channels, DC block, volume, clip
+      const L = FIR_LEN, H = FIR_LEN / 2, h = this.fir, hl = this.histL, hr = this.histR, vol = this.vol;
       let hw = this.hw;
       for (let j = 0, o = 0; j < BLOCK; j++) {
         for (let q = 0; q < OS; q++, o++) {
@@ -875,7 +918,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
           hw = hw + 1 === L ? 0 : hw + 1;
         }
         let al = 0, ar = 0;
-        for (let t = 0; t < L; t++) { const c = h[t]; al += c * hl[hw + t]; ar += c * hr[hw + t]; }
+        for (let t = 0, u = hw + L - 1; t < H; t++, u--) { const c = h[t], a = hw + t; al += c * (hl[a] + hl[u]); ar += c * (hr[a] + hr[u]); }
         const yl = al - d.xl + d.R * d.yl; d.xl = al; d.yl = yl;
         const yr = ar - d.xr + d.R * d.yr; d.xr = ar; d.yr = yr;
         let sl = yl * vol, sr = yr * vol;
@@ -914,6 +957,11 @@ class DolphinProcessor extends AudioWorkletProcessor {
     this.eng = new DolphinEngine(sampleRate, 1234);
     this.vizEvery = Math.round(sampleRate / 30);
     this.vizCount = 0;
+    // DSP load: time spent in the engine / length of audio produced. performance.now() where the
+    // worklet has it; otherwise Date.now(), whose 1 ms steps average out over half a second
+    this.hiRes = typeof performance !== 'undefined' && typeof performance.now === 'function';
+    this.clock = this.hiRes ? () => performance.now() : () => Date.now();
+    this.busyMs = 0; this.audioMs = 0; this.load = 0; this.peak = 0; this.winPeak = 0; this.peakAge = 0;
     this.port.onmessage = (e) => {
       const m = e.data, eng = this.eng;
       if (m.t === 'p') eng.setParam(m.id, m.v);
@@ -928,13 +976,25 @@ class DolphinProcessor extends AudioWorkletProcessor {
   }
   process(inputs, outputs) {
     const out = outputs[0], l = out[0], r = out[1] || null, n = l.length;
+    const t0 = this.clock();
     this.eng.process(l, r, n);
+    const spent = this.clock() - t0, len = n / sampleRate * 1000;
+    this.busyMs += spent; this.audioMs += len;
+    if (this.hiRes && spent / len > this.winPeak) this.winPeak = spent / len;
+    if (this.audioMs >= 500) {
+      this.load = this.busyMs / this.audioMs; this.busyMs = 0; this.audioMs = 0;
+      // peak: the slowest single callback, held for 2 s
+      if (this.winPeak >= this.peak || ++this.peakAge >= 4) { this.peak = this.winPeak; this.peakAge = 0; }
+      this.winPeak = 0;
+    }
     this.vizCount += n;
     if (this.vizCount >= this.vizEvery) {
       this.vizCount = 0;
       const i = this.eng.info;
       const e = this.eng;
+      let kernels = 0; for (const v of e.voices) kernels += v.kN;
       this.port.postMessage({ t: 'stat', voices: i.voices, rate: i.rate, whistle: i.whistle, click: e.clickFc,
+        load: this.load, peak: this.hiRes ? this.peak : -1, kernels, idle: !!i.idle,
         lfo: { t: Array.from(e.lfoTarget), ph: Array.from(e.lfoPhase), y: Array.from(e.lfoSm) } });
     }
     return true;
@@ -1470,6 +1530,7 @@ registerProcessor('dolphin-processor', DolphinProcessor);
 
   /* ---------- live view ---------- */
   const ro = { rate: document.getElementById('roRate'), heard: document.getElementById('roHeard'), wh: document.getElementById('roWh'), click: document.getElementById('roClick'), vo: document.getElementById('roVo') };
+  const roCpu = document.getElementById('roCpu'), roKern = document.getElementById('roKern');
   const hz = f => f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : Math.round(f) + ' Hz';
   function onMsg(e) {
     const m = e.data;
@@ -1483,6 +1544,10 @@ registerProcessor('dolphin-processor', DolphinProcessor);
     ro.heard.className = on && m.rate >= 30 ? 'hot' : '';
     ro.wh.textContent = on && state.register > 0.001 ? hz(m.whistle) : '—';
     ro.click.textContent = hz(m.click);
+    const pc = v => (v * 100).toFixed(v < 0.1 ? 1 : 0) + '%';
+    roCpu.textContent = m.idle ? pc(m.load) + ' · IDLE' : pc(m.load) + (m.peak >= 0 ? ' · PEAK ' + pc(m.peak) : '');
+    roCpu.className = m.load > 0.5 || m.peak > 0.8 ? 'warn' : '';
+    roKern.textContent = m.kernels;
   }
   let lfoLive = null;
   function updateModDots() {

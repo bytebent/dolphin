@@ -26,6 +26,10 @@
   const SIGMAS = 3.5;           // click kernel runs ±3.5 standard deviations
   const F_CAP = 16000;          // whistle base pitch is dropped an octave above this
   const TWO_PI = 2 * Math.PI;
+  // sine table for the whistle partials and the biphonation wave (linear interpolation, error below -120 dB)
+  const SIN_N = 4096;
+  const SIN = new Float64Array(SIN_N + 2);
+  for (let i = 0; i < SIN_N + 2; i++) SIN[i] = Math.sin(TWO_PI * i / SIN_N);
 
   // ids, defaults and ranges: the one table the C++ core and the UI copy.
   // log: the knob moves logarithmically; curve: knob position^curve; step: whole steps.
@@ -147,6 +151,7 @@
       this.seed = (seed >>> 0) || 1;
       // click kernels (struct of arrays)
       this.kOn = new Uint8Array(MAX_KERNELS);
+      this.kList = new Int32Array(MAX_KERNELS); this.kN = 0;   // active kernels only
       this.kG = new Float64Array(MAX_KERNELS); this.kQ = new Float64Array(MAX_KERNELS); this.kC = new Float64Array(MAX_KERNELS);
       this.kRe = new Float64Array(MAX_KERNELS); this.kIm = new Float64Array(MAX_KERNELS);
       this.kCr = new Float64Array(MAX_KERNELS); this.kCi = new Float64Array(MAX_KERNELS);
@@ -165,7 +170,7 @@
       this.codaVowel = 0; this.prevVowel = 0; this.vw = 0; this.vwS = 0;
       this.b1a = 0; this.b1b = 0; this.b2a = 0; this.b2b = 0;
       this.wpos = 0;
-      this.kOn.fill(0);
+      this.kOn.fill(0); this.kN = 0;
       this.dx.fill(0); this.de.fill(0);
       this.fW = 0; this.rateNow = 0;
     }
@@ -196,7 +201,7 @@
       this.vel = 0.2 + 0.8 * clamp(vel / 127, 0, 1);
       if (this.stage === 0) {
         this.env = 0; this.phW = 0; this.phP = 0.999999;   // first click on the first sample
-        this.kOn.fill(0); this.dx.fill(0); this.de.fill(0);
+        this.kOn.fill(0); this.kN = 0; this.dx.fill(0); this.de.fill(0);
         this.b1a = this.b1b = this.b2a = this.b2b = 0;
       }
       this.stage = 1; this.held = true; this.age = ++e.ageCounter;
@@ -247,7 +252,7 @@
       this.clickIdx++;
     }
 
-    fire(frac) {
+    fire(frac, audible) {
       const e = this.e;
       // vowel: a new coda's first click still carries the previous coda's vowel
       if (e.codaN > 0) {
@@ -255,7 +260,7 @@
         else this.vw = this.codaVowel;
       } else this.vw = e.sVowel;
       let slot = -1;
-      for (let i = 0; i < MAX_KERNELS; i++) if (!this.kOn[i]) { slot = i; break; }
+      if (audible && this.kN < MAX_KERNELS) for (let i = 0; i < MAX_KERNELS; i++) if (!this.kOn[i]) { slot = i; break; }
       if (slot >= 0) {
         const s = e.sigmaS, t0 = frac - SIGMAS * s;
         this.kG[slot] = Math.exp(-0.5 * t0 * t0 / (s * s));
@@ -267,6 +272,7 @@
         this.kLeft[slot] = Math.ceil(2 * SIGMAS * s - frac) + 1;
         this.kAmp[slot] = e.jitter > 0 ? clamp(1 + e.jitter * 0.15 * this.gauss(), 0.5, 1.5) : 1;
         this.kOn[slot] = 1;
+        this.kList[this.kN++] = slot;
       }
       if (e.onsets) e.onsets.push(e.osTime - frac);
       e.pulseCount++;
@@ -315,6 +321,8 @@
       const pg = e.gPulse * amp, wg = e.gWhistle * amp * wNorm;
       const pL = e.panPL * pg, pR = e.panPR * pg, wL = e.panWL * wg, wR = e.panWR * wg;
       const bip = e.biphon;
+      // skip whichever lip is silent (Register at an end)
+      const pulseOn = pg > 1e-7, whistleOn = wg > 1e-9;
       // comb
       const ring = e.ringG, D = e.ipiS, D0 = 0.9 * D, mask = this.dlen - 1;
       const ringOn = ring > 0.0005;
@@ -337,18 +345,21 @@
           phP -= 1;
           const frac = inc > 0 ? Math.min(0.999999, phP / inc) : 0;
           e.osTime = e.osTimeBase + j;
-          this.fire(frac);
+          this.fire(frac, pulseOn);
           phP = phP * (inc > 0 ? (incP / this.gapW) / inc : 1);
         }
+        let pulse = 0;
+        if (pulseOn) {
         let x = 0;
-        for (let k = 0; k < MAX_KERNELS; k++) {
-          if (!this.kOn[k]) continue;
+        for (let a = 0; a < this.kN;) {
+          const k = this.kList[a];
           const g = this.kG[k];
           x += g * this.kRe[k] * this.kAmp[k];
           this.kG[k] = g * this.kQ[k]; this.kQ[k] *= this.kC[k];
           const re = this.kRe[k], im = this.kIm[k], cr = this.kCr[k], ci = this.kCi[k];
           this.kRe[k] = re * cr - im * ci; this.kIm[k] = re * ci + im * cr;
-          if (--this.kLeft[k] <= 0) this.kOn[k] = 0;
+          if (--this.kLeft[k] <= 0) { this.kOn[k] = 0; this.kList[a] = this.kList[--this.kN]; continue; }
+          a++;
         }
         // multipulse: echoes at 0.9 D, then every D
         let y = x;
@@ -369,21 +380,31 @@
         v3 = y - b2b; v1 = c1 * b2a + c2 * v3; v2 = b2b + c2 * b2a + c3 * v3;
         b2a = 2 * v1 - b2a; b2b = 2 * v2 - b2b;
         const bp2 = k2 * v1;
-        const pulse = (0.3 * y + 0.9 * bp1 + vw * 0.9 * bp2) * env;
+        pulse = (0.3 * y + 0.9 * bp1 + vw * 0.9 * bp2) * env;
+        }
         // whistle: sine partials via the Chebyshev recurrence
-        phW += f / srOS; if (phW >= 1) phW -= 1;
-        f += df;
-        const th = TWO_PI * phW, s1 = Math.sin(th), co = Math.cos(th), c2x = 2 * co;
-        const s2 = c2x * s1, s3 = c2x * s2 - s1, s4 = c2x * s3 - s2;
-        let w = g1 * s1 + g2 * s2 + g3 * s3 + g4 * s4;
-        if (bip > 0) w *= 1 - bip + bip * (0.5 + 0.5 * Math.cos(TWO_PI * phP));
-        w *= env;
+        let w = 0;
+        if (whistleOn) {
+          phW += f / srOS; if (phW >= 1) phW -= 1;
+          f += df;
+          let xs = phW * SIN_N, is = xs | 0, fs = xs - is;
+          const s1 = SIN[is] + (SIN[is + 1] - SIN[is]) * fs;
+          xs = (phW + 0.25) * SIN_N; if (xs >= SIN_N) xs -= SIN_N; is = xs | 0; fs = xs - is;
+          const c2x = 2 * (SIN[is] + (SIN[is + 1] - SIN[is]) * fs);
+          const s2 = c2x * s1, s3 = c2x * s2 - s1, s4 = c2x * s3 - s2;
+          w = g1 * s1 + g2 * s2 + g3 * s3 + g4 * s4;
+          if (bip > 0) {
+            let xb = (phP + 0.25) * SIN_N; xb -= SIN_N * Math.floor(xb / SIN_N); const ib = xb | 0;
+            w *= 1 - bip + bip * (0.5 + 0.5 * (SIN[ib] + (SIN[ib + 1] - SIN[ib]) * (xb - ib)));
+          }
+          w *= env;
+        }
         oL[j] += pulse * pL + w * wL;
         oR[j] += pulse * pR + w * wR;
       }
       this.env = env; this.stage = stage; this.phW = phW; this.phP = phP; this.wpos = wpos & 0x3fffffff;
       this.b1a = b1a; this.b1b = b1b; this.b2a = b2a; this.b2b = b2b;
-      if (stage === 0) { this.note = -1; this.held = false; this.kOn.fill(0); }
+      if (stage === 0) { this.note = -1; this.held = false; this.kOn.fill(0); this.kN = 0; }
     }
   }
 
@@ -407,7 +428,7 @@
       this.osL = new Float32Array(BLOCK * OS); this.osR = new Float32Array(BLOCK * OS);
       this.blkL = new Float32Array(BLOCK); this.blkR = new Float32Array(BLOCK); this.blkPos = BLOCK;
       this.dlen = 1; while (this.dlen < Math.ceil(0.0046 * this.srOS) + 8) this.dlen <<= 1;
-      this.ageCounter = 0;
+      this.ageCounter = 0; this.quietBlocks = 0;
       this.stack = [];
       this.bendNorm = 0; this.tempo = 120;
       this.dc = { xl: 0, yl: 0, xr: 0, yr: 0, R: 1 - 2 * Math.PI * 10 / sampleRate };
@@ -617,6 +638,14 @@
 
     processBlock() {
       this.advanceLfos(BLOCK / this.sr);
+      const d0 = this.dc;
+      if (this.quietBlocks > 0 && !this.voices.some(v => v.stage !== 0) &&
+          Math.abs(d0.yl) < 1e-12 && Math.abs(d0.yr) < 1e-12 && Math.abs(d0.xl) < 1e-12 && Math.abs(d0.xr) < 1e-12) {
+        // idle: nothing sounds and the filters are empty; a note from silence snaps the controls anyway
+        this.blkL.fill(0); this.blkR.fill(0); d0.xl = d0.yl = d0.xr = d0.yr = 0;
+        this.info.voices = 0; this.info.idle = true;
+        return;
+      }
       this.updateControls(false);
       const nOS = BLOCK * OS, oL = this.osL, oR = this.osR;
       oL.fill(0); oR.fill(0);
@@ -628,8 +657,19 @@
       }
       this.osTimeBase += nOS;
       this.info.voices = count; this.info.rate = rate; this.info.whistle = wh;
-      // decimate (FIR) both channels, DC block, volume, clip
-      const L = FIR_LEN, h = this.fir, hl = this.histL, hr = this.histR, d = this.dc, vol = this.vol;
+      const d = this.dc;
+      // silence: once a whole block has passed with no voices, the filter history is all zeros,
+      // so skip the decimation until a note starts (the DC blocker's tail must have died out too)
+      if (count === 0 && this.quietBlocks > 0 && Math.abs(d.yl) < 1e-12 && Math.abs(d.yr) < 1e-12 && Math.abs(d.xl) < 1e-12 && Math.abs(d.xr) < 1e-12) {
+        this.blkL.fill(0); this.blkR.fill(0);
+        d.xl = d.yl = d.xr = d.yr = 0;
+        this.info.idle = true;
+        return;
+      }
+      this.quietBlocks = count === 0 ? this.quietBlocks + 1 : 0;
+      this.info.idle = false;
+      // decimate (FIR, symmetric: half the multiplies) both channels, DC block, volume, clip
+      const L = FIR_LEN, H = FIR_LEN / 2, h = this.fir, hl = this.histL, hr = this.histR, vol = this.vol;
       let hw = this.hw;
       for (let j = 0, o = 0; j < BLOCK; j++) {
         for (let q = 0; q < OS; q++, o++) {
@@ -638,7 +678,7 @@
           hw = hw + 1 === L ? 0 : hw + 1;
         }
         let al = 0, ar = 0;
-        for (let t = 0; t < L; t++) { const c = h[t]; al += c * hl[hw + t]; ar += c * hr[hw + t]; }
+        for (let t = 0, u = hw + L - 1; t < H; t++, u--) { const c = h[t], a = hw + t; al += c * (hl[a] + hl[u]); ar += c * (hr[a] + hr[u]); }
         const yl = al - d.xl + d.R * d.yl; d.xl = al; d.yl = yl;
         const yr = ar - d.xr + d.R * d.yr; d.xr = ar; d.yr = yr;
         let sl = yl * vol, sr = yr * vol;

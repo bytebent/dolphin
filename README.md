@@ -32,3 +32,14 @@ Rebuild it after changing the engine: `node tools/bench/build.js`.
 ```sh
 node tests/engine-test.js
 ```
+
+## Performance
+
+```sh
+node tools/perf.js
+```
+
+Prints how much of one CPU core each scenario needs to run in real time at 48 kHz, from silence
+to the worst case (8 voices, 2,000 clicks per second, ring, biphonation and four LFOs). The bench
+page shows the same live as **DSP** in the readouts, with **CLICKS** for the click kernels sounding.
+Both measure the JavaScript reference; the C++ plugin will be lighter, but the ratios carry over.
