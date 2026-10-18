@@ -30,6 +30,17 @@
     // pulses near 1.1 kHz (the low part) under a whistle near 7 kHz (the high part)
     { name: 'Orca-style biphonic call', note: 69,
       p: { register: 0.5, keytrack: 1, rate: 1.3, biphon: 0.7, pitchmode: 0, shape: 2, sweep: 0.5, time: 1.0, size: 0, clicktone: -1, spread: 0.2, attack: 0.03, sustain: 1, release: 0.1 } },
+    // LFO presets: modulation instead of drawn automation
+    { name: 'LFO: wandering whistle', note: 69,
+      p: { register: 1, pitchmode: 1, harmonics: 1, attack: 0.05, sustain: 1, release: 0.2,
+           lfo1target: 'pitch', lfo1shape: 6, lfo1rate: 1.6, lfo1from: 0.38, lfo1to: 0.66 } },
+    { name: 'LFO: creak breathing into squawk', note: 60, targetRate: 0,
+      p: Object.assign({}, PULSES, { freerate: 83, sustain: 1, attack: 0.02,
+           lfo1target: 'freerate', lfo1shape: 0, lfo1rate: 0.4, lfo1from: 0.45, lfo1to: 0.82,
+           lfo2target: 'vowel', lfo2shape: 1, lfo2rate: 0.9, lfo2from: 0, lfo2to: 1 }) },
+    { name: 'LFO: sperm whale codas, drifting size', note: 48, targetRate: 0,
+      p: Object.assign({}, PULSES, { freerate: 6, pattern: 3, coda: 5, size: 1, sizemode: 1, ring: 0.6, clickwidth: 0.2, sustain: 1,
+           lfo1target: 'size', lfo1shape: 6, lfo1rate: 0.25, lfo1from: 0.55, lfo1to: 1, lfo1sync: 0 }) },
     { name: 'Creak into whistle', note: 67,
       p: { register: 0.45, keytrack: 1, rate: -4, shape: 3, sweep: 0.8, time: 1.5, ring: 0.2, attack: 0.02, sustain: 1 } },
   ];

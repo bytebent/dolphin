@@ -27,48 +27,89 @@
   const F_CAP = 16000;          // whistle base pitch is dropped an octave above this
   const TWO_PI = 2 * Math.PI;
 
-  // ids, defaults and ranges: the one table the C++ core and the UI copy
+  // ids, defaults and ranges: the one table the C++ core and the UI copy.
+  // log: the knob moves logarithmically; curve: knob position^curve; step: whole steps.
   const PARAMS = [
     { id: 'rate', def: -2, min: -6, max: 2 },           // octaves from the note (key track on)
-    { id: 'keytrack', def: 1, min: 0, max: 1 },
-    { id: 'freerate', def: 13, min: 1, max: 2000 },     // pulses per second (key track off)
-    { id: 'sync', def: 0, min: 0, max: 1 },
-    { id: 'pattern', def: 0, min: 0, max: 3 },          // Regular, Increasing, Decreasing, Grouped
-    { id: 'coda', def: 0, min: 0, max: 16 },            // clicks per coda, 0 = continuous
+    { id: 'keytrack', def: 1, min: 0, max: 1, step: 1 },
+    { id: 'freerate', def: 13, min: 1, max: 2000, log: true },  // pulses per second (key track off)
+    { id: 'sync', def: 0, min: 0, max: 1, step: 1 },
+    { id: 'pattern', def: 0, min: 0, max: 3, step: 1 }, // Regular, Increasing, Decreasing, Grouped
+    { id: 'coda', def: 0, min: 0, max: 16, step: 1 },   // clicks per coda, 0 = continuous
     { id: 'jitter', def: 0.05, min: 0, max: 1 },
     { id: 'rubato', def: 0, min: 0, max: 1 },
     { id: 'ornament', def: 0, min: 0, max: 1 },
     { id: 'clicktone', def: 0, min: -2, max: 2 },       // octaves from the Size centre
-    { id: 'clickwidth', def: 0.1, min: 0.05, max: 0.5 },// ms (standard deviation)
+    { id: 'clickwidth', def: 0.1, min: 0.05, max: 0.5, log: true }, // ms (standard deviation)
     { id: 'ring', def: 0, min: 0, max: 1 },
     { id: 'vowel', def: 0, min: 0, max: 1 },            // 0 a (one peak), 1 i (two peaks)
-    { id: 'pitchmode', def: 0, min: 0, max: 1 },        // 0 envelope, 1 knob
-    { id: 'shape', def: 1, min: 0, max: 5 },            // Flat, Up, Down, Convex, Concave, Wave
+    { id: 'pitchmode', def: 0, min: 0, max: 1, step: 1 },  // 0 envelope, 1 knob
+    { id: 'shape', def: 1, min: 0, max: 5, step: 1 },   // Flat, Up, Down, Convex, Concave, Wave
     { id: 'sweep', def: 1.4, min: -3, max: 3 },         // octaves
-    { id: 'time', def: 1, min: 0.05, max: 4 },          // s
+    { id: 'time', def: 1, min: 0.05, max: 4, curve: 2 },// s
     { id: 'pitch', def: 0, min: -3, max: 3 },           // octaves (knob mode)
-    { id: 'harmonics', def: 1, min: 0, max: 3 },
+    { id: 'wtranspose', def: 0, min: -24, max: 24, step: 1 },  // semitones, whistle only
+    { id: 'harmonics', def: 1, min: 0, max: 3, step: 1 },
     { id: 'harmlevel', def: -12, min: -24, max: 0 },    // dB, 2nd partial
     { id: 'register', def: 0.5, min: 0, max: 1 },       // 0 pulses only, 1 whistle only
     { id: 'biphon', def: 0, min: 0, max: 1 },
     { id: 'spread', def: 0.3, min: 0, max: 1 },
     { id: 'size', def: 0, min: 0, max: 1 },             // 0 small, 1 large
-    { id: 'sizemode', def: 0, min: 0, max: 1 },         // 0 octaves, 1 continuous
-    { id: 'mode', def: 1, min: 0, max: 1 },             // 0 mono, 1 poly
-    { id: 'glide', def: 0.06, min: 0, max: 2 },         // s, mono only
-    { id: 'transpose', def: 0, min: -24, max: 24 },     // semitones
+    { id: 'sizemode', def: 0, min: 0, max: 1, step: 1 },// 0 octaves, 1 continuous
+    { id: 'mode', def: 1, min: 0, max: 1, step: 1 },    // 0 mono, 1 poly
+    { id: 'glide', def: 0.06, min: 0, max: 2, curve: 3 },  // s, mono only
+    { id: 'transpose', def: 0, min: -24, max: 24, step: 1 },  // semitones
     { id: 'detune', def: 0, min: -100, max: 100 },      // cents
-    { id: 'bendrange', def: 12, min: 2, max: 48 },      // semitones
-    { id: 'attack', def: 0.01, min: 0.001, max: 5 },
-    { id: 'decay', def: 0.3, min: 0.001, max: 5 },
+    { id: 'bendrange', def: 12, min: 2, max: 48, step: 1 },  // semitones
+    { id: 'attack', def: 0.01, min: 0.001, max: 5, curve: 3 },
+    { id: 'decay', def: 0.3, min: 0.001, max: 5, curve: 3 },
     { id: 'sustain', def: 0.8, min: 0, max: 1 },
-    { id: 'release', def: 0.3, min: 0.001, max: 8 },
+    { id: 'release', def: 0.3, min: 0.001, max: 8, curve: 3 },
     { id: 'volume', def: -6, min: -48, max: 6 },        // dB
   ];
+  // what an LFO may move: every knob except Bend range
+  const MOD_TARGETS = ['rate', 'freerate', 'coda', 'jitter', 'rubato', 'ornament', 'clicktone', 'clickwidth', 'ring', 'vowel',
+    'sweep', 'time', 'pitch', 'wtranspose', 'harmonics', 'harmlevel', 'register', 'biphon', 'spread', 'size',
+    'glide', 'transpose', 'detune', 'attack', 'decay', 'sustain', 'release', 'volume'];
+  const NUM_LFOS = 4;
+  const LFO_SHAPES = ['Sine', 'Triangle', 'Ramp up', 'Ramp down', 'Square', 'Random step', 'Random smooth'];
+  // synced LFO lengths in beats: 8 bars … 1/32, with triplets
+  const LFO_DIVS = [32, 16, 8, 4, 2, 4 / 3, 1, 2 / 3, 0.5, 1 / 3, 0.25, 1 / 6, 0.125];
+  for (let n = 1; n <= NUM_LFOS; n++) {
+    PARAMS.push(
+      { id: 'lfo' + n + 'target', def: 0, min: 0, max: MOD_TARGETS.length, step: 1 },   // 0 = none (dormant)
+      { id: 'lfo' + n + 'shape', def: 0, min: 0, max: LFO_SHAPES.length - 1, step: 1 },
+      { id: 'lfo' + n + 'rate', def: 0.5, min: 0.02, max: 40, log: true },              // Hz (free)
+      { id: 'lfo' + n + 'sync', def: 0, min: 0, max: 1, step: 1 },
+      { id: 'lfo' + n + 'from', def: 0, min: 0, max: 1 },                               // share of the target's range
+      { id: 'lfo' + n + 'to', def: 1, min: 0, max: 1 },
+      { id: 'lfo' + n + 'retrig', def: 0, min: 0, max: 1, step: 1 });                   // 0 free, 1 restart on note
+  }
   const PINDEX = {};
   PARAMS.forEach((p, i) => { PINDEX[p.id] = i; });
+  const TARGET_INDEX = MOD_TARGETS.map(id => PINDEX[id]);
 
   const SYNC_DIVS = [0.25, 1 / 3, 0.5, 2 / 3, 1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64];   // pulses per beat
+
+  // knob position (0–1) ↔ value, as the UI's knobs move
+  function toNorm(d, v) {
+    if (d.log) return Math.log(v / d.min) / Math.log(d.max / d.min);
+    const n = (v - d.min) / (d.max - d.min);
+    return d.curve ? Math.pow(Math.max(0, n), 1 / d.curve) : n;
+  }
+  function fromNorm(d, n) {
+    n = n < 0 ? 0 : n > 1 ? 1 : n;
+    let v = d.log ? d.min * Math.pow(d.max / d.min, n) : d.min + (d.max - d.min) * (d.curve ? Math.pow(n, d.curve) : n);
+    if (d.step) v = Math.round(v / d.step) * d.step;
+    return v;
+  }
+  // nearest synced LFO length to a free rate, in beats
+  function lfoBeats(rateHz, bpm) {
+    const want = (bpm / 60) / rateHz;
+    let best = LFO_DIVS[0], bd = Infinity;
+    for (const b of LFO_DIVS) { const dd = Math.abs(Math.log(b / want)); if (dd < bd) { bd = dd; best = b; } }
+    return best;
+  }
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
@@ -139,11 +180,11 @@
 
     pitchTarget(note) {
       const e = this.e;
-      return Math.log2(440) + (note - 69 + e.p[PINDEX.transpose] + e.p[PINDEX.detune] / 100) / 12;
+      return Math.log2(440) + (note - 69 + e.m[PINDEX.transpose] + e.m[PINDEX.detune] / 100) / 12;
     }
     setTarget(note, glide) {
       const t = this.pitchTarget(note);
-      const g = this.e.p[PINDEX.glide];
+      const g = this.e.m[PINDEX.glide];
       if (glide && g > 0.0015) {
         const steps = Math.max(1, Math.round(g * this.e.sr / BLOCK));
         this.glideStep = (t - this.logF) / steps; this.glideLeft = steps;
@@ -163,7 +204,7 @@
       this.prevVowel = this.codaVowel = this.vw = this.vwS = e.sVowel;
       // whistle base pitch: drop whole octaves above the cap
       this.drop = 0;
-      while (Math.pow(2, this.logF + e.kSize + this.drop) > F_CAP) this.drop -= 1;
+      while (Math.pow(2, this.logF + e.kSize + e.wTransOct + this.drop) > F_CAP) this.drop -= 1;
     }
     release() { if (this.stage !== 0) { this.stage = 4; this.held = false; } }
 
@@ -246,8 +287,8 @@
         p0 = e.sSweep * shapeAt(e.shape, u0); p1 = e.sSweep * shapeAt(e.shape, u1);
         this.envT += dt;
       }
-      const f0 = Math.pow(2, base + e.kSizePrev + this.drop + p0);
-      const f1 = Math.pow(2, base + e.kSize + this.drop + p1);
+      const f0 = Math.pow(2, base + e.kSizePrev + e.wTransPrev + this.drop + p0);
+      const f1 = Math.pow(2, base + e.kSize + e.wTransOct + this.drop + p1);
       this.fW = f1;
       // pulse rate
       let rate = e.keytrack ? Math.pow(2, base + e.sRate) : e.freeRate;
@@ -265,10 +306,10 @@
       this.vwS += (this.vw - this.vwS) * 0.5;
       const vw = this.vwS;
       // envelope steps
-      const attStep = 1 / Math.max(1, e.p[PINDEX.attack] * srOS);
-      const dCoef = Math.exp(-4 / Math.max(1, e.p[PINDEX.decay] * srOS));
-      const rCoef = Math.exp(-4 / Math.max(1, e.p[PINDEX.release] * srOS));
-      const sus = e.p[PINDEX.sustain];
+      const attStep = 1 / Math.max(1, e.m[PINDEX.attack] * srOS);
+      const dCoef = Math.exp(-4 / Math.max(1, e.m[PINDEX.decay] * srOS));
+      const rCoef = Math.exp(-4 / Math.max(1, e.m[PINDEX.release] * srOS));
+      const sus = e.m[PINDEX.sustain];
       // gains
       const amp = this.vel;
       const pg = e.gPulse * amp, wg = e.gWhistle * amp * wNorm;
@@ -350,8 +391,17 @@
   class DolphinEngine {
     constructor(sampleRate, seed) {
       this.sr = sampleRate; this.srOS = sampleRate * OS;
-      this.p = new Float64Array(PARAMS.length);
+      this.p = new Float64Array(PARAMS.length);           // as set by the host or the UI
       PARAMS.forEach((d, i) => { this.p[i] = d.def; });
+      this.m = Float64Array.from(this.p);                  // after the LFOs: what the sound uses
+      this.modded = new Uint8Array(PARAMS.length);
+      // LFOs: dormant (no work at all) while their target is None
+      this.lfoPhase = new Float64Array(NUM_LFOS); this.lfoPrev = new Float64Array(NUM_LFOS); this.lfoNext = new Float64Array(NUM_LFOS);
+      this.lfoOut = new Float64Array(NUM_LFOS); this.lfoSm = new Float64Array(NUM_LFOS);
+      this.lfoTarget = new Int32Array(NUM_LFOS); this.lfoFresh = new Uint8Array(NUM_LFOS).fill(1);
+      this.lfoRng = new Uint32Array(NUM_LFOS);
+      for (let i = 0; i < NUM_LFOS; i++) this.lfoRng[i] = ((((seed >>> 0) || 1) * 2654435761) ^ (0x51ed27 * (i + 1))) >>> 0 || 1;
+      this.lfoSmooth = 1 - Math.exp(-BLOCK / (0.002 * sampleRate));
       this.fir = makeFir();
       this.histL = new Float32Array(FIR_LEN * 2); this.histR = new Float32Array(FIR_LEN * 2); this.hw = 0;
       this.osL = new Float32Array(BLOCK * OS); this.osR = new Float32Array(BLOCK * OS);
@@ -374,7 +424,7 @@
       this.sSpread = this.p[PINDEX.spread]; this.sTone = this.p[PINDEX.clicktone]; this.sWidth = this.p[PINDEX.clickwidth];
       this.sRing = this.p[PINDEX.ring]; this.sBip = this.p[PINDEX.biphon]; this.sVol = this.p[PINDEX.volume];
       this.pitchNow = this.pitchPrev = this.sPitch;
-      this.kSize = this.kSizePrev = 0;
+      this.kSize = this.kSizePrev = 0; this.wTransOct = this.wTransPrev = 0;
       this.updateControls(true);
       this.info = { voices: 0, rate: 0, whistle: 0 };
     }
@@ -383,6 +433,8 @@
     static get PARAMS() { return PARAMS; }
 
     setParam(id, v) {
+      // an LFO target may be given by parameter id ('pitch') instead of its menu number
+      if (typeof v === 'string' && /^lfo\dtarget$/.test(id)) v = v === 'none' ? 0 : MOD_TARGETS.indexOf(v) + 1;
       const i = PINDEX[id];
       if (i === undefined || !Number.isFinite(v)) return;
       const d = PARAMS[i];
@@ -395,8 +447,10 @@
 
     noteOn(note, vel) {
       if (vel <= 0) { this.noteOff(note); return; }
+      // LFOs set to restart on each note
+      for (let i = 0; i < NUM_LFOS; i++) if (this.p[PINDEX['lfo' + (i + 1) + 'retrig']] >= 0.5) { this.lfoPhase[i] = 0; this.lfoFresh[i] = 1; }
       // starting from silence: jump straight to the current settings instead of gliding from old ones
-      if (!this.voices.some(v => v.active())) this.updateControls(true);
+      if (!this.voices.some(v => v.active())) { this.advanceLfos(0); this.updateControls(true); }
       if (this.p[PINDEX.mode] === 0) {
         const v = this.voices[0];
         const i = this.stack.indexOf(note); if (i >= 0) this.stack.splice(i, 1);
@@ -430,23 +484,25 @@
 
     // per-block control values
     updateControls(snap) {
-      const P = this.p, c = snap ? 1 : this.smooth, cf = snap ? 1 : this.smoothFast;
+      this.applyLfos();
+      const P = this.m, M = this.modded, c0 = snap ? 1 : this.smooth, cf = snap ? 1 : this.smoothFast;
+      const c = c0;
       this.sRate += (P[PINDEX.rate] - this.sRate) * cf;
       this.sFree += (Math.log2(P[PINDEX.freerate]) - this.sFree) * cf;
       this.pitchPrev = this.sPitch;
       this.sPitch += (P[PINDEX.pitch] - this.sPitch) * cf;
       this.pitchNow = this.sPitch;
-      this.sSweep += (P[PINDEX.sweep] - this.sSweep) * c;
-      this.sTime += (P[PINDEX.time] - this.sTime) * c;
+      this.sSweep += (P[PINDEX.sweep] - this.sSweep) * (M[PINDEX.sweep] ? cf : c);
+      this.sTime += (P[PINDEX.time] - this.sTime) * (M[PINDEX.time] ? cf : c);
       this.sVowel += (P[PINDEX.vowel] - this.sVowel) * cf;
-      this.sSize += (P[PINDEX.size] - this.sSize) * c;
-      this.sReg += (P[PINDEX.register] - this.sReg) * c;
-      this.sSpread += (P[PINDEX.spread] - this.sSpread) * c;
-      this.sTone += (P[PINDEX.clicktone] - this.sTone) * c;
-      this.sWidth += (P[PINDEX.clickwidth] - this.sWidth) * c;
-      this.sRing += (P[PINDEX.ring] - this.sRing) * c;
-      this.sBip += (P[PINDEX.biphon] - this.sBip) * c;
-      this.sVol += (P[PINDEX.volume] - this.sVol) * c;
+      this.sSize += (P[PINDEX.size] - this.sSize) * (M[PINDEX.size] ? cf : c);
+      this.sReg += (P[PINDEX.register] - this.sReg) * (M[PINDEX.register] ? cf : c);
+      this.sSpread += (P[PINDEX.spread] - this.sSpread) * (M[PINDEX.spread] ? cf : c);
+      this.sTone += (P[PINDEX.clicktone] - this.sTone) * (M[PINDEX.clicktone] ? cf : c);
+      this.sWidth += (P[PINDEX.clickwidth] - this.sWidth) * (M[PINDEX.clickwidth] ? cf : c);
+      this.sRing += (P[PINDEX.ring] - this.sRing) * (M[PINDEX.ring] ? cf : c);
+      this.sBip += (P[PINDEX.biphon] - this.sBip) * (M[PINDEX.biphon] ? cf : c);
+      this.sVol += (P[PINDEX.volume] - this.sVol) * (M[PINDEX.volume] ? cf : c);
 
       this.keytrack = P[PINDEX.keytrack] >= 0.5;
       this.pattern = Math.round(P[PINDEX.pattern]);
@@ -468,6 +524,9 @@
       this.freeRate = fr;
       // bend
       this.bendOct = this.bendNorm * P[PINDEX.bendrange] / 12;
+      this.wTransPrev = this.wTransOct;
+      this.wTransOct = P[PINDEX.wtranspose] / 12;
+      if (snap) this.wTransPrev = this.wTransOct;
       // size
       this.kSizePrev = this.kSize;
       const kRaw = 4 * (1 - this.sSize);
@@ -494,6 +553,61 @@
       this.panWL = Math.cos(pw * Math.PI / 2) * Math.SQRT2; this.panWR = Math.sin(pw * Math.PI / 2) * Math.SQRT2;
       this.vol = Math.pow(10, this.sVol / 20);
     }
+    // move each active LFO on by dt seconds and compute its output (0–1)
+    advanceLfos(dt) {
+      for (let i = 0; i < NUM_LFOS; i++) {
+        const b = PINDEX['lfo' + (i + 1) + 'target'];
+        const t = Math.round(this.p[b]);
+        this.lfoTarget[i] = t;
+        if (t === 0) continue;                                   // dormant
+        const shape = Math.round(this.p[b + 1]);
+        let hz = this.p[b + 2];
+        if (this.p[b + 3] >= 0.5) hz = (this.tempo / 60) / lfoBeats(hz, this.tempo);
+        let ph = this.lfoPhase[i] + hz * dt;
+        let wrapped = false;
+        if (ph >= 1) { ph -= Math.floor(ph); wrapped = true; }
+        if (wrapped || this.lfoFresh[i]) {
+          this.lfoPrev[i] = this.lfoFresh[i] ? this.lfoRand(i) : this.lfoNext[i];
+          this.lfoNext[i] = this.lfoRand(i);
+          this.lfoFresh[i] = 0;
+        }
+        this.lfoPhase[i] = ph;
+        let y;
+        switch (shape) {
+          case 0: y = 0.5 - 0.5 * Math.cos(TWO_PI * ph); break;          // Sine, starts at From
+          case 1: y = ph < 0.5 ? 2 * ph : 2 - 2 * ph; break;              // Triangle
+          case 2: y = ph; break;                                           // Ramp up
+          case 3: y = 1 - ph; break;                                       // Ramp down
+          case 4: y = ph < 0.5 ? 0 : 1; break;                             // Square
+          case 5: y = this.lfoPrev[i]; break;                              // Random step
+          default: { const u = 0.5 - 0.5 * Math.cos(Math.PI * ph); y = this.lfoPrev[i] + (this.lfoNext[i] - this.lfoPrev[i]) * u; }  // Random smooth
+        }
+        this.lfoOut[i] = y;
+        // a 2 ms glide keeps square and step jumps from clicking
+        this.lfoSm[i] = dt === 0 ? y : this.lfoSm[i] + (y - this.lfoSm[i]) * this.lfoSmooth;
+      }
+    }
+    lfoRand(i) {
+      let x = this.lfoRng[i];
+      x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+      this.lfoRng[i] = x;
+      return x / 4294967296;
+    }
+    // effective values: the set values, with each active LFO's target replaced by From→To
+    applyLfos() {
+      this.m.set(this.p);
+      this.modded.fill(0);
+      for (let i = 0; i < NUM_LFOS; i++) {
+        const t = this.lfoTarget[i];
+        if (t === 0) continue;
+        const b = PINDEX['lfo' + (i + 1) + 'target'];
+        const idx = TARGET_INDEX[t - 1], d = PARAMS[idx];
+        const from = this.p[b + 4], to = this.p[b + 5];
+        this.m[idx] = fromNorm(d, from + (to - from) * this.lfoSm[i]);
+        this.modded[idx] = 1;
+      }
+    }
+
     setSvf(n, f, q) {
       const g = Math.tan(Math.PI * f / this.srOS), k = 1 / q;
       const a1 = 1 / (1 + g * (g + k)), a2 = g * a1, a3 = g * a2;
@@ -502,6 +616,7 @@
     }
 
     processBlock() {
+      this.advanceLfos(BLOCK / this.sr);
       this.updateControls(false);
       const nOS = BLOCK * OS, oL = this.osL, oR = this.osR;
       oL.fill(0); oR.fill(0);
@@ -549,6 +664,8 @@
   }
 
   DolphinEngine.BLOCK = BLOCK; DolphinEngine.OS = OS;
-  if (typeof module !== 'undefined' && module.exports) module.exports = { DolphinEngine, PARAMS };
+  DolphinEngine.MOD_TARGETS = MOD_TARGETS; DolphinEngine.LFO_SHAPES = LFO_SHAPES; DolphinEngine.LFO_DIVS = LFO_DIVS;
+  DolphinEngine.toNorm = toNorm; DolphinEngine.fromNorm = fromNorm; DolphinEngine.lfoBeats = lfoBeats;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { DolphinEngine, PARAMS, MOD_TARGETS, LFO_SHAPES, LFO_DIVS };
   else root.DolphinEngine = DolphinEngine;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

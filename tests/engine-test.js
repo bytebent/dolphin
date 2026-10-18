@@ -1,7 +1,7 @@
 // Reference engine tests. Run: node tests/engine-test.js
 'use strict';
 const path = require('path');
-const { DolphinEngine, PARAMS } = require(path.join(__dirname, '..', 'reference', 'dolphin-engine.js'));
+const { DolphinEngine, PARAMS, MOD_TARGETS } = require(path.join(__dirname, '..', 'reference', 'dolphin-engine.js'));
 const { PRESETS } = require(path.join(__dirname, '..', 'reference', 'presets.js'));
 
 let failed = 0;
@@ -152,7 +152,7 @@ for (const pr of PRESETS) {
   let peak = 0, nan = false;
   for (let i = 0; i < L.length; i++) { const v = Math.max(Math.abs(L[i]), Math.abs(R[i])); if (!(v === v)) nan = true; if (v > peak) peak = v; }
   let rateOk = true, rateTxt = '';
-  if (pr.targetRate) {
+  if (pr.targetRate) {  // 0 = modulated rate, not checked
     const want = pr.targetRate * 1.5 * (pr.p.coda ? 0.5 : 1);
     rateTxt = ', ' + e.pulseCount + ' pulses';
     if (!pr.p.coda) rateOk = Math.abs(e.pulseCount - pr.targetRate * 1.5) <= pr.targetRate * 1.5 * 0.1 + 2;
@@ -162,6 +162,40 @@ for (const pr of PRESETS) {
   check('preset: ' + pr.name, !nan && peak > 0.01 && peak < 0.999 && rateOk, 'peak ' + peak.toFixed(3) + rateTxt);
 }
 
-check('35 parameters', PARAMS.length === 35, PARAMS.length + '');
+// 11. whistle transpose moves the whistle only
+{
+  const { e, L } = render(48000, 0.6, e => { apply(e, { register: 1, pitchmode: 1, harmonics: 0, size: 1, sustain: 1, spread: 0, wtranspose: 12, keytrack: 1, rate: 0 }); e.noteOn(69, 100); });
+  const f = zcFreq(L, 48000, 4800);
+  check('whistle transpose +12', Math.abs(1200 * Math.log2(f / 880)) < 10, f.toFixed(1) + ' Hz');
+  check('whistle transpose leaves pulse rate alone', Math.abs(e.pulseCount - 0.6 * 440) <= 2, e.pulseCount + ' pulses');
+}
+
+// 12. LFOs: dormant without a target, exact when used
+{
+  const base = e => { apply(e, { register: 0.5, keytrack: 0, freerate: 40, jitter: 0.3, sustain: 1 }); e.noteOn(60, 100); e.noteOn(64, 100); };
+  const plain = render(48000, 1, base).L;
+  const t0 = Date.now(); render(48000, 1, base); const tPlain = Date.now() - t0;
+  const parked = e => { for (let n = 1; n <= 4; n++) apply(e, { ['lfo' + n + 'target']: 0, ['lfo' + n + 'shape']: 6, ['lfo' + n + 'rate']: 30, ['lfo' + n + 'from']: 0.1, ['lfo' + n + 'to']: 0.9 }); base(e); };
+  const t1 = Date.now(); const idle = render(48000, 1, parked).L; const tIdle = Date.now() - t1;
+  let same = true; for (let i = 0; i < plain.length; i++) if (plain[i] !== idle[i]) { same = false; break; }
+  check('LFOs without a target change nothing', same, 'render ' + tPlain + ' ms plain, ' + tIdle + ' ms with 4 parked LFOs');
+  const pitchIdx = MOD_TARGETS.indexOf('pitch') + 1;
+  // square LFO on Pitch: first half cycle at From (0 oct), second at To (+1 oct)
+  const { L } = render(48000, 2, e => { apply(e, { register: 1, pitchmode: 1, harmonics: 0, size: 1, sustain: 1, spread: 0,
+    lfo1target: pitchIdx, lfo1shape: 4, lfo1rate: 0.5, lfo1from: 0.5, lfo1to: 0.5 + 1 / 6 }); e.noteOn(69, 100); });
+  const fa = zcFreq(L.subarray(0, 48000 * 0.9), 48000, 9600), fb = zcFreq(L.subarray(0, 48000 * 1.9), 48000, 48000 * 1.1);
+  check('LFO square on Pitch: From then To', Math.abs(1200 * Math.log2(fa / 440)) < 10 && Math.abs(1200 * Math.log2(fb / 880)) < 10, fa.toFixed(1) + ' Hz, then ' + fb.toFixed(1) + ' Hz');
+  check('LFO sync: 2 Hz at 120 BPM is a quarter note', DolphinEngine.lfoBeats(2, 120) === 1 && DolphinEngine.lfoBeats(3.1, 120) === 2 / 3);
+  // ramp on Free rate from 10 to 1000 per second: more pulses than either end alone would give in a second
+  const rateIdx = MOD_TARGETS.indexOf('freerate') + 1;
+  const r = render(48000, 1, e => { apply(e, { register: 0, keytrack: 0, sustain: 1, jitter: 0, lfo1target: rateIdx, lfo1shape: 2, lfo1rate: 1, lfo1from: 0, lfo1to: 1 }); e.noteOn(60, 100); });
+  check('LFO ramp on Free rate sweeps it', r.e.pulseCount > 100 && r.e.pulseCount < 2000, r.e.pulseCount + ' pulses in 1 s');
+  const setup = e => { apply(e, { register: 0.5, jitter: 0.4, keytrack: 0, freerate: 40, lfo1target: pitchIdx, lfo1shape: 6, lfo1rate: 7, lfo2target: rateIdx, lfo2shape: 5, lfo2rate: 3, lfo2retrig: 1 }); e.noteOn(60, 100); e.noteOn(67, 90); };
+  const a = render(48000, 1, setup, 1).L, b = render(48000, 1, setup, 64).L, c = render(48000, 1, setup, 1024).L;
+  let eq = true; for (let i = 0; i < a.length; i++) if (a[i] !== b[i] || a[i] !== c[i]) { eq = false; break; }
+  check('random LFOs repeat exactly at buffer sizes 1, 64, 1024', eq);
+}
+
+check('64 parameters (36 sound + 4 LFOs x 7)', PARAMS.length === 64, PARAMS.length + '');
 console.log(failed ? '\n' + failed + ' failed' : '\nall passed');
 process.exit(failed ? 1 : 0);

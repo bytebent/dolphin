@@ -83,6 +83,35 @@ legend .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);box-sh
 .gel:focus-visible{outline:2px solid var(--blue-dk);outline-offset:2px}
 .dim{opacity:.4}
 
+/* pages */
+.tabs{display:flex;gap:0;margin-top:14px;border-bottom:1px solid #8e8e96;padding-left:10px}
+.tabs button{font:700 12px var(--ui);border:1px solid #8e8e96;border-bottom:0;border-radius:7px 7px 0 0;padding:6px 18px 5px;margin-right:-1px;cursor:pointer;color:#222;
+  background:linear-gradient(#fff,#d8d8dd 48%,#c4c4ca 52%,#e6e6ea);display:inline-flex;align-items:center;gap:7px;position:relative;top:1px}
+.tabs button[aria-selected="true"]{color:#fff;text-shadow:0 -1px 0 rgba(0,0,0,.3);background:linear-gradient(var(--blue-lt),var(--blue) 48%,#0086c0 52%,#38b8ea);border-color:var(--blue-dk)}
+.tabs button:focus-visible{outline:2px solid var(--blue-dk);outline-offset:1px}
+.led{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#eee,#9c9ca4 60%,#6e6e78);box-shadow:0 0 0 1px rgba(0,0,0,.45) inset;flex:none}
+.led.on{background:radial-gradient(circle at 35% 30%,#e3f6fe,var(--blue) 60%,var(--blue-dk));box-shadow:0 0 6px var(--blue),0 0 0 1px rgba(0,0,0,.45) inset}
+.page[hidden]{display:none}
+.page .rows{margin-top:12px}
+.lfos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.lfo .knobs{display:grid;grid-template-columns:140px repeat(3, minmax(64px, 1fr));gap:10px 10px;align-items:end;justify-items:center}
+.lfo .knobs > :nth-child(1){grid-column:1;grid-row:1;justify-self:start;align-items:flex-start}
+.lfo .knobs > :nth-child(2){grid-column:2 / 5;grid-row:1}
+.lfo .knobs > :nth-child(3){grid-column:1;grid-row:2 / 4;align-self:center;justify-self:start}
+.lfo .knobs > :nth-child(4){grid-column:2;grid-row:2}
+.lfo .knobs > :nth-child(5){grid-column:2;grid-row:3}
+.lfo .knobs > :nth-child(6){grid-column:3;grid-row:2}
+.lfo .knobs > :nth-child(7){grid-column:4;grid-row:2}
+.lfo .knobs > :nth-child(8){grid-column:3 / 5;grid-row:3}
+.lfo .seg button{padding:4px 8px}
+.lfo legend .led{margin-left:2px}
+.lfohead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;width:100%}
+.lfohead label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700}
+.scope{width:132px;height:58px;border-radius:4px;background:var(--screen);box-shadow:0 0 0 1px #000 inset;display:block}
+.dial .moddot{position:absolute;inset:0;border-radius:50%;pointer-events:none;display:none}
+.dial .moddot::after{content:"";position:absolute;left:50%;top:-2px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--blue-dk),0 0 6px var(--blue)}
+.dial .moddot.on{display:block}
+.modnote{font-size:11px;color:var(--ink-soft);margin-top:8px}
 /* bench extras */
 .extras{margin-top:12px;border-style:dashed;background:rgba(244,244,246,.55)}
 .extras legend{color:var(--ink-soft)}
@@ -115,7 +144,17 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
 .foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin-top:12px;font-size:11px;color:var(--ink-soft)}
 .foot .sp{margin-left:auto}
 .err{display:none;margin-top:10px;padding:8px 10px;border-left:4px solid var(--blue-dk);background:#e8f6fc;font-size:12px}
-@media (max-width:720px){ .titlebar .tag{display:none} .lane{grid-template-columns:auto 1fr} .lane canvas{grid-column:1 / -1} .play{grid-template-columns:1fr} .bend{flex-direction:row;width:auto} .bend input{writing-mode:horizontal-tb;direction:ltr;width:160px;height:auto} }
+@media (max-width:720px){ .lfos{grid-template-columns:1fr}
+  .lfo .knobs{grid-template-columns:repeat(3, 1fr)}
+  .lfo .knobs > :nth-child(1){grid-column:1 / 4;grid-row:1}
+  .lfo .knobs > :nth-child(2){grid-column:1 / 4;grid-row:2}
+  .lfo .knobs > :nth-child(3){grid-column:1 / 4;grid-row:3;justify-self:center}
+  .lfo .knobs > :nth-child(4){grid-column:1;grid-row:4}
+  .lfo .knobs > :nth-child(6){grid-column:2;grid-row:4}
+  .lfo .knobs > :nth-child(7){grid-column:3;grid-row:4}
+  .lfo .knobs > :nth-child(5){grid-column:1 / 4;grid-row:5}
+  .lfo .knobs > :nth-child(8){grid-column:1 / 4;grid-row:6}
+  .scope{width:220px} .titlebar .tag{display:none} .lane{grid-template-columns:auto 1fr} .lane canvas{grid-column:1 / -1} .play{grid-template-columns:1fr} .bend{flex-direction:row;width:auto} .bend input{writing-mode:horizontal-tb;direction:ltr;width:160px;height:auto} }
 </style>
 </head>
 <body>
@@ -149,6 +188,11 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       </div>
     </div>
 
+    <div class="tabs" role="tablist" aria-label="Pages">
+      <button type="button" role="tab" id="tabSound" aria-selected="true" aria-controls="pageSound">Sound</button>
+      <button type="button" role="tab" id="tabMod" aria-selected="false" aria-controls="pageMod">Modulation <span class="led" id="modLed" aria-hidden="true"></span></button>
+    </div>
+    <div class="page" id="pageSound" role="tabpanel" aria-labelledby="tabSound">
     <div class="rows">
       <fieldset><legend><span class="dot"></span>Pulse · right lips</legend><div class="knobs" id="g-pulse"></div></fieldset>
       <fieldset><legend><span class="dot"></span>Click</legend><div class="knobs" id="g-click"></div></fieldset>
@@ -159,9 +203,14 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       <fieldset><legend><span class="dot"></span>Envelope</legend><div class="knobs" id="g-env"></div></fieldset>
       <fieldset><legend><span class="dot"></span>Output</legend><div class="knobs" id="g-out"></div></fieldset>
     </div>
+    </div>
+    <div class="page" id="pageMod" role="tabpanel" aria-labelledby="tabMod" hidden>
+      <div class="lfos" id="lfos"></div>
+      <div class="modnote">Each LFO moves one knob between its From and To values, as host automation would. An LFO with no target does no work at all. Modulated knobs show a moving dot on the Sound page.</div>
+    </div>
 
     <fieldset class="extras">
-      <legend><span class="dot" style="background:#fff;box-shadow:0 0 0 1px #6e6e78 inset"></span>Bench only: test presets and automation</legend>
+      <legend><span class="dot" style="background:#fff;box-shadow:0 0 0 1px #6e6e78 inset"></span>Bench only: test presets</legend>
       <div class="prow">
         <label for="presetSel" style="font-weight:700">Test preset</label>
         <select id="presetSel"></select>
@@ -170,8 +219,6 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
         <button class="gel grey small" id="resetAll" type="button">Reset to defaults</button>
         <span class="note">Test presets stay out of the plugin build.</span>
       </div>
-      <div id="lanes"></div>
-      <div class="note" style="margin-top:6px">Draw a curve, pick a parameter, tick the box: the lane loops and moves that knob, as host automation would.</div>
     </fieldset>
 
     <div class="play">
@@ -203,7 +250,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   const oct = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + ' oct';
   const rateFmt = v => v < 10 ? v.toFixed(1) + '/s' : Math.round(v) + '/s';
   const SPECS = [
-    { g: 'g-pulse', type: 'knob', id: 'rate', name: 'Rate', min: -6, max: 2, def: -2, big: true, bipolarAt: 0, fmt: oct, mark30: true },
+    { g: 'g-pulse', type: 'knob', id: 'rate', name: 'Rate', long: 'Pulse rate (key)', min: -6, max: 2, def: -2, big: true, bipolarAt: 0, fmt: oct, mark30: true },
     { g: 'g-pulse', type: 'seg', id: 'keytrack', name: 'Rate follows', opts: ['Free', 'Key'], def: 1 },
     { g: 'g-pulse', type: 'knob', id: 'freerate', name: 'Free rate', min: 1, max: 2000, def: 13, log: true, fmt: rateFmt, chips: [13, 83, 287, 472] },
     { g: 'g-pulse', type: 'seg', id: 'sync', name: 'Sync', opts: ['Off', 'On'], def: 0 },
@@ -219,9 +266,10 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     { g: 'g-whistle', type: 'seg', id: 'pitchmode', name: 'Pitch', opts: ['Envelope', 'Knob'], def: 0 },
     { g: 'g-whistle', type: 'seg', id: 'shape', name: 'Shape', opts: ['Flat', 'Up', 'Down', 'Convex', 'Concave', 'Wave'], def: 1 },
     { g: 'g-whistle', type: 'curve' },
-    { g: 'g-whistle', type: 'knob', id: 'sweep', name: 'Sweep', min: -3, max: 3, def: 1.4, bipolarAt: 0.5, fmt: oct },
-    { g: 'g-whistle', type: 'knob', id: 'time', name: 'Time', min: 0.05, max: 4, def: 1, curve: 2, fmt: secs },
-    { g: 'g-whistle', type: 'knob', id: 'pitch', name: 'Pitch', min: -3, max: 3, def: 0, bipolarAt: 0.5, fmt: oct },
+    { g: 'g-whistle', type: 'knob', id: 'sweep', name: 'Sweep', long: 'Envelope sweep', min: -3, max: 3, def: 1.4, bipolarAt: 0.5, fmt: oct },
+    { g: 'g-whistle', type: 'knob', id: 'time', name: 'Time', long: 'Envelope time', min: 0.05, max: 4, def: 1, curve: 2, fmt: secs },
+    { g: 'g-whistle', type: 'knob', id: 'pitch', name: 'Pitch', long: 'Whistle pitch', min: -3, max: 3, def: 0, bipolarAt: 0.5, fmt: oct },
+    { g: 'g-whistle', type: 'knob', id: 'wtranspose', name: 'Transpose', long: 'Whistle transpose', min: -24, max: 24, def: 0, step: 1, bipolarAt: 0.5, fmt: v => sgn(Math.round(v)) + ' st' },
     { g: 'g-whistle', type: 'knob', id: 'harmonics', name: 'Harmonics', min: 0, max: 3, def: 1, step: 1, fmt: v => Math.round(v) === 0 ? 'Pure' : '+' + Math.round(v) },
     { g: 'g-whistle', type: 'knob', id: 'harmlevel', name: 'Harm. level', min: -24, max: 0, def: -12, fmt: v => v.toFixed(1) + ' dB' },
     { g: 'g-lips', type: 'knob', id: 'register', name: 'Register', min: 0, max: 1, def: 0.5, big: true, fmt: v => v < 0.02 ? 'Pulses' : v > 0.98 ? 'Whistle' : 'P ' + Math.round((1 - v) * 100) + ' · W ' + Math.round(v * 100) },
@@ -231,7 +279,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     { g: 'g-body', type: 'seg', id: 'sizemode', name: 'Size moves', opts: ['Octaves', 'Continuous'], def: 0 },
     { g: 'g-voice', type: 'seg', id: 'mode', name: 'Voices', opts: ['Mono', 'Poly'], def: 1 },
     { g: 'g-voice', type: 'knob', id: 'glide', name: 'Glide', min: 0, max: 2, def: 0.06, curve: 3, fmt: v => v < 0.0015 ? 'Off' : secs(v) },
-    { g: 'g-voice', type: 'knob', id: 'transpose', name: 'Transpose', min: -24, max: 24, def: 0, step: 1, bipolarAt: 0.5, fmt: v => sgn(Math.round(v)) + ' st' },
+    { g: 'g-voice', type: 'knob', id: 'transpose', name: 'Transpose', long: 'Transpose (both lips)', min: -24, max: 24, def: 0, step: 1, bipolarAt: 0.5, fmt: v => sgn(Math.round(v)) + ' st' },
     { g: 'g-voice', type: 'knob', id: 'detune', name: 'Detune', min: -100, max: 100, def: 0, bipolarAt: 0.5, fmt: v => sgn(Math.round(v)) + ' ct' },
     { g: 'g-voice', type: 'knob', id: 'bendrange', name: 'Bend range', min: 2, max: 48, def: 12, step: 1, fmt: v => '±' + Math.round(v) + ' st' },
     { g: 'g-env', type: 'knob', id: 'attack', name: 'Attack', min: 0.001, max: 5, def: 0.01, curve: 3, fmt: secs },
@@ -240,6 +288,52 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     { g: 'g-env', type: 'knob', id: 'release', name: 'Release', min: 0.001, max: 8, def: 0.3, curve: 3, fmt: secs },
     { g: 'g-out', type: 'knob', id: 'volume', name: 'Volume', min: -48, max: 6, def: -6, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) + ' dB' },
   ];
+
+  /* ---------- LFOs (lists match dolphin-engine.js) ---------- */
+  const MOD_TARGETS = ['rate', 'freerate', 'coda', 'jitter', 'rubato', 'ornament', 'clicktone', 'clickwidth', 'ring', 'vowel',
+    'sweep', 'time', 'pitch', 'wtranspose', 'harmonics', 'harmlevel', 'register', 'biphon', 'spread', 'size',
+    'glide', 'transpose', 'detune', 'attack', 'decay', 'sustain', 'release', 'volume'];
+  const NUM_LFOS = 4;
+  const LFO_SHAPES = ['Sine', 'Tri', 'Ramp ↑', 'Ramp ↓', 'Square', 'Step', 'Smooth'];
+  const LFO_DIVS = [32, 16, 8, 4, 2, 4 / 3, 1, 2 / 3, 0.5, 1 / 3, 0.25, 1 / 6, 0.125];
+  const DIV_NAMES = ['8 bars', '4 bars', '2 bars', '1 bar', '1/2', '1/2T', '1/4', '1/4T', '1/8', '1/8T', '1/16', '1/16T', '1/32'];
+  const specOf = id => SPECS.find(x => x.id === id);
+  function lfoBeats(hz, bpm) {
+    const want = (bpm / 60) / hz; let best = 0, bd = Infinity;
+    LFO_DIVS.forEach((b, i) => { const dd = Math.abs(Math.log(b / want)); if (dd < bd) { bd = dd; best = i; } });
+    return best;
+  }
+  const tempoNow = () => +document.getElementById('tempo').value || 120;
+  function lfoRateFmt(n, v) {
+    if (state['lfo' + n + 'sync'] === 1) return DIV_NAMES[lfoBeats(v, tempoNow())];
+    return v < 1 ? v.toFixed(2) + ' Hz' : v < 10 ? v.toFixed(1) + ' Hz' : Math.round(v) + ' Hz';
+  }
+  function lfoValFmt(n, v) {
+    const t = state['lfo' + n + 'target'];
+    if (!t) return pct(v);
+    const sp = specOf(MOD_TARGETS[t - 1]);
+    return sp.fmt(fromNorm(sp, v));
+  }
+  for (let n = 1; n <= NUM_LFOS; n++) {
+    const g = 'g-lfo' + n;
+    SPECS.push(
+      { g, type: 'select', id: 'lfo' + n + 'target', name: 'Target', def: 0 },
+      { g, type: 'seg', id: 'lfo' + n + 'shape', name: 'Shape', opts: LFO_SHAPES, def: 0 },
+      { g, type: 'scope', n },
+      { g, type: 'knob', id: 'lfo' + n + 'rate', name: 'Rate', min: 0.02, max: 40, def: 0.5, log: true, fmt: v => lfoRateFmt(n, v) },
+      { g, type: 'seg', id: 'lfo' + n + 'sync', name: 'Rate is', opts: ['Free', 'Tempo'], def: 0 },
+      { g, type: 'knob', id: 'lfo' + n + 'from', name: 'From', min: 0, max: 1, def: 0, fmt: v => lfoValFmt(n, v) },
+      { g, type: 'knob', id: 'lfo' + n + 'to', name: 'To', min: 0, max: 1, def: 1, fmt: v => lfoValFmt(n, v) },
+      { g, type: 'seg', id: 'lfo' + n + 'retrig', name: 'Restart', opts: ['Free', 'On note'], def: 0 });
+  }
+  {
+    const host = document.getElementById('lfos');
+    for (let n = 1; n <= NUM_LFOS; n++) {
+      const f = document.createElement('fieldset'); f.className = 'lfo';
+      f.innerHTML = '<legend><span class="dot"></span>LFO ' + n + ' <span class="led" id="lfoLed' + n + '"></span></legend><div class="knobs" id="g-lfo' + n + '"></div>';
+      host.appendChild(f);
+    }
+  }
 
   /* ---------- audio ---------- */
   let ctx = null, node = null, analyser = null, ready = false, starting = null;
@@ -298,8 +392,8 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   function makeKnob(s, host) {
     const el = document.createElement('div');
     el.className = 'knob' + (s.big ? ' big' : '');
-    el.innerHTML = '<div class="dial" tabindex="0" role="slider"><div class="cap"></div><div class="ptr"></div></div><span class="name"></span><span class="val"></span>';
-    const dial = el.firstChild, valEl = el.children[2];
+    el.innerHTML = '<div class="dial" tabindex="0" role="slider"><div class="cap"></div><div class="ptr"></div><div class="moddot"></div></div><span class="name"></span><span class="val"></span>';
+    const dial = el.firstChild, valEl = el.children[2], modDot = dial.querySelector('.moddot');
     el.children[1].textContent = s.name;
     dial.setAttribute('aria-label', s.name);
     if (s.mark30) {   // a tick where Rate puts A3 at 30 pulses per second: rhythm below, pitch above
@@ -319,6 +413,10 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       el.appendChild(c);
     }
     const k = { s, el, dial, valEl, norm: toNorm(s, s.def) };
+    k.showMod = n => {
+      if (n === null) { modDot.classList.remove('on'); return; }
+      modDot.classList.add('on'); modDot.style.transform = 'rotate(' + (-135 + n * 270) + 'deg)';
+    };
     k.set = (n, quiet) => {
       k.norm = Math.min(1, Math.max(0, n));
       const v = fromNorm(s, k.norm);
@@ -336,6 +434,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       dial.setAttribute('aria-valuetext', txt);
       if (!quiet) send({ t: 'p', id: s.id, v });
       if (s.id === 'sweep' || s.id === 'time') drawCurve();
+      if (/^lfo\dfrom$|^lfo\dto$/.test(s.id)) updateLfoLeds();
     };
     let dragY = null, startN = 0;
     dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dragY = e.clientY; startN = k.norm; dial.focus(); e.preventDefault(); });
@@ -376,6 +475,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
       if (!quiet) send({ t: 'p', id: s.id, v });
       if (s.id === 'mode' && !quiet) releaseKeys();
       if (s.id === 'shape') drawCurve();
+      const m = /^lfo(\d)sync$/.exec(s.id); if (m && knobs['lfo' + m[1] + 'rate']) knobs['lfo' + m[1] + 'rate'].set(knobs['lfo' + m[1] + 'rate'].norm, true);
       updateDims();
     };
     btns.forEach(b => b.addEventListener('click', () => g.set(+b.dataset.v)));
@@ -388,9 +488,59 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     w.innerHTML = '<canvas aria-label="Whistle pitch envelope"></canvas><span>Envelope</span>';
     host.appendChild(w); curveCanvas = w.firstChild; segs._curve = { el: w };
   }
+  function makeSelect(s, host) {
+    const w = document.createElement('div'); w.className = 'segwrap';
+    w.innerHTML = '<span></span><select></select>';
+    w.firstChild.textContent = s.name;
+    const el = w.lastChild; el.setAttribute('aria-label', 'LFO target');
+    const none = document.createElement('option'); none.value = 0; none.textContent = 'None (off)'; el.appendChild(none);
+    MOD_TARGETS.forEach((id, i) => { const sp = specOf(id), o = document.createElement('option'); o.value = i + 1; o.textContent = sp.long || sp.name; el.appendChild(o); });
+    el.addEventListener('keydown', e => e.stopPropagation());
+    host.appendChild(w);
+    const n = s.id.charAt(3);
+    const g = { s, el: w };
+    g.set = (v, quiet) => {
+      if (typeof v === 'string') v = v === 'none' ? 0 : MOD_TARGETS.indexOf(v) + 1;
+      v = Math.max(0, Math.round(v)); state[s.id] = v; el.value = String(v);
+      if (!quiet) send({ t: 'p', id: s.id, v });
+      for (const k of ['from', 'to']) { const kn = knobs['lfo' + n + k]; if (kn) kn.set(kn.norm, true); }
+      updateLfoLeds();
+    };
+    el.addEventListener('change', () => g.set(+el.value));
+    g.set(s.def, true);
+    segs[s.id] = g;
+  }
+  const scopes = [];
+  function makeScope(s, host) {
+    const c = document.createElement('canvas'); c.className = 'scope'; c.setAttribute('aria-label', 'LFO ' + s.n + ' wave and position');
+    const w = document.createElement('div'); w.className = 'segwrap'; w.appendChild(c);
+    host.appendChild(w); scopes[s.n] = c;
+  }
+  function updateLfoLeds() {
+    let any = false;
+    for (let n = 1; n <= NUM_LFOS; n++) {
+      const on = !!state['lfo' + n + 'target'];
+      const led = document.getElementById('lfoLed' + n); if (led) led.classList.toggle('on', on);
+      any = any || on;
+    }
+    const m = document.getElementById('modLed'); if (m) m.classList.toggle('on', any);
+  }
   for (const s of SPECS) {
     const host = document.getElementById(s.g);
-    if (s.type === 'knob') makeKnob(s, host); else if (s.type === 'seg') makeSeg(s, host); else makeCurve(host);
+    if (s.type === 'knob') makeKnob(s, host); else if (s.type === 'seg') makeSeg(s, host);
+    else if (s.type === 'select') makeSelect(s, host); else if (s.type === 'scope') makeScope(s, host); else makeCurve(host);
+  }
+  updateLfoLeds();
+  // pages
+  {
+    const tS = document.getElementById('tabSound'), tM = document.getElementById('tabMod');
+    const pS = document.getElementById('pageSound'), pM = document.getElementById('pageMod');
+    const show = mod => {
+      tS.setAttribute('aria-selected', String(!mod)); tM.setAttribute('aria-selected', String(mod));
+      pS.hidden = mod; pM.hidden = !mod;
+      if (!mod) drawCurve();
+    };
+    tS.addEventListener('click', () => show(false)); tM.addEventListener('click', () => show(true));
   }
   // Rate tick: where a C3 note (130.8 Hz) crosses 30 pulses per second
   if (knobs.rate) {
@@ -479,65 +629,6 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     setTimeout(() => send({ t: 'off', n: pr.note }), 2200);
   });
 
-  /* ---------- automation lanes ---------- */
-  const lanesEl = document.getElementById('lanes');
-  const autoIds = SPECS.filter(s => s.type === 'knob').map(s => s.id);
-  const lanes = [];
-  function makeLane(i, defId) {
-    const row = document.createElement('div'); row.className = 'lane';
-    row.innerHTML = '<label class="check"><input type="checkbox"> Lane ' + (i + 1) + '</label><select aria-label="Parameter for lane ' + (i + 1) + '"></select>' +
-      '<div class="seg" role="group" aria-label="Loop length"><button type="button" data-v="2">2 s</button><button type="button" data-v="4">4 s</button><button type="button" data-v="8">8 s</button></div><canvas aria-label="Automation curve for lane ' + (i + 1) + ', draw with the pointer"></canvas>';
-    lanesEl.appendChild(row);
-    const chk = row.querySelector('input'), ps = row.querySelector('select'), cv = row.querySelector('canvas'), lb = [...row.querySelectorAll('.seg button')];
-    for (const id of autoIds) { const o = document.createElement('option'); o.value = id; o.textContent = SPECS.find(s => s.id === id).name; ps.appendChild(o); }
-    ps.value = defId; ps.addEventListener('keydown', e => e.stopPropagation());
-    const L = { on: false, id: defId, len: 4, pts: new Float32Array(128), t0: 0, cv };
-    const fill = () => { const k = knobs[L.id]; L.pts.fill(k ? k.norm : 0.5); };
-    fill();
-    // default curves so a lane does something the moment it is ticked
-    if (defId === 'rate') for (let j = 0; j < 128; j++) L.pts[j] = 0.15 + 0.7 * j / 127;
-    if (defId === 'pitch') for (let j = 0; j < 128; j++) L.pts[j] = 0.5 + 0.3 * Math.sin(2 * Math.PI * j / 128);
-    const setLen = v => { L.len = v; lb.forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === v))); };
-    lb.forEach(b => b.addEventListener('click', () => setLen(+b.dataset.v))); setLen(4);
-    chk.addEventListener('change', () => { L.on = chk.checked; L.t0 = performance.now(); if (L.on) start(); });
-    ps.addEventListener('change', () => { L.id = ps.value; fill(); });
-    let last = null;
-    const paint = e => {
-      const r = cv.getBoundingClientRect();
-      const xi = Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 127);
-      const yv = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
-      if (last) { const [a, av] = last, n = Math.abs(xi - a) || 1; for (let s = 0; s <= n; s++) { const t = s / n; L.pts[Math.round(a + (xi - a) * t)] = av + (yv - av) * t; } }
-      else L.pts[xi] = yv;
-      last = [xi, yv];
-    };
-    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); last = null; paint(e); e.preventDefault(); });
-    cv.addEventListener('pointermove', e => { if (last) paint(e); });
-    cv.addEventListener('pointerup', () => { last = null; }); cv.addEventListener('pointercancel', () => { last = null; });
-    lanes.push(L);
-  }
-  makeLane(0, 'rate'); makeLane(1, 'pitch');
-  function runLanes(now) {
-    for (const L of lanes) {
-      const c = L.cv, d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
-      const W = Math.max(1, Math.round(r.width * d)), H = Math.max(1, Math.round(r.height * d));
-      if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-      const x = c.getContext('2d');
-      x.clearRect(0, 0, W, H);
-      x.fillStyle = 'rgba(0,157,220,.18)'; x.strokeStyle = L.on ? '#009ddc' : 'rgba(143,216,247,.5)'; x.lineWidth = 1.5 * d;
-      x.beginPath(); x.moveTo(0, H);
-      for (let j = 0; j < 128; j++) x.lineTo(j / 127 * W, H - L.pts[j] * (H - 4 * d) - 2 * d);
-      x.lineTo(W, H); x.closePath(); x.fill();
-      x.beginPath();
-      for (let j = 0; j < 128; j++) { const yy = H - L.pts[j] * (H - 4 * d) - 2 * d; j ? x.lineTo(j / 127 * W, yy) : x.moveTo(0, yy); }
-      x.stroke();
-      if (!L.on) continue;
-      const u = ((now - L.t0) / 1000 / L.len) % 1, fi = u * 127, i0 = Math.floor(fi), i1 = Math.min(127, i0 + 1);
-      const v = L.pts[i0] + (L.pts[i1] - L.pts[i0]) * (fi - i0);
-      x.fillStyle = '#fff'; x.fillRect(u * W - d, 0, 2 * d, H);
-      const k = knobs[L.id]; if (k && Math.abs(k.norm - v) > 1e-4) k.set(v);
-    }
-  }
-
   /* ---------- pitch bend ---------- */
   const bendEl = document.getElementById('bend'), roBend = document.getElementById('roBend');
   const sendBend = () => { send({ t: 'bend', v: +bendEl.value }); roBend.textContent = (+bendEl.value * (state.bendrange || 12)).toFixed(1) + ' st'; };
@@ -546,7 +637,10 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   bendEl.addEventListener('pointerup', springBack); bendEl.addEventListener('pointercancel', springBack);
   bendEl.addEventListener('keydown', e => e.stopPropagation()); bendEl.addEventListener('keyup', e => { e.stopPropagation(); springBack(); });
   const tempoEl = document.getElementById('tempo');
-  tempoEl.addEventListener('change', () => send({ t: 'tempo', v: +tempoEl.value || 120 }));
+  tempoEl.addEventListener('change', () => {
+    send({ t: 'tempo', v: +tempoEl.value || 120 });
+    for (let n = 1; n <= NUM_LFOS; n++) { const k = knobs['lfo' + n + 'rate']; k.set(k.norm, true); }
+  });
   tempoEl.addEventListener('keydown', e => e.stopPropagation());
 
   /* ---------- PC keyboard as a MIDI keyboard (Ableton layout) ---------- */
@@ -625,6 +719,8 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   function onMsg(e) {
     const m = e.data;
     if (m.t !== 'stat') return;
+    lfoLive = m.lfo || null;
+    updateModDots();
     ro.vo.textContent = m.voices + (state.mode === 1 ? '/8' : '');
     const on = m.voices > 0;
     ro.rate.textContent = on && state.register < 0.999 ? rateFmt(m.rate) : '—';
@@ -632,6 +728,54 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
     ro.heard.className = on && m.rate >= 30 ? 'hot' : '';
     ro.wh.textContent = on && state.register > 0.001 ? hz(m.whistle) : '—';
     ro.click.textContent = hz(m.click);
+  }
+  let lfoLive = null;
+  function updateModDots() {
+    for (const id in knobs) knobs[id].showMod(null);
+    if (!lfoLive) return;
+    for (let i = 0; i < NUM_LFOS; i++) {
+      const t = lfoLive.t[i]; if (!t) continue;
+      const n = i + 1, k = knobs[MOD_TARGETS[t - 1]]; if (!k) continue;
+      const from = state['lfo' + n + 'from'], to = state['lfo' + n + 'to'];
+      k.showMod(from + (to - from) * lfoLive.y[i]);
+    }
+  }
+  function lfoShapeAt(shape, ph, seed) {
+    switch (shape) {
+      case 0: return 0.5 - 0.5 * Math.cos(2 * Math.PI * ph);
+      case 1: return ph < 0.5 ? 2 * ph : 2 - 2 * ph;
+      case 2: return ph;
+      case 3: return 1 - ph;
+      case 4: return ph < 0.5 ? 0 : 1;
+      default: {   // random shapes: an illustration with fixed values
+        const v = [0.2, 0.75, 0.4, 0.95, 0.1, 0.6], seg = Math.min(5, Math.floor(ph * 6)), u = ph * 6 - seg;
+        if (shape === 5) return v[seg];
+        const a = v[seg], b = v[(seg + 1) % 6]; return a + (b - a) * (0.5 - 0.5 * Math.cos(Math.PI * u));
+      }
+    }
+  }
+  function drawScopes() {
+    for (let n = 1; n <= NUM_LFOS; n++) {
+      const c = scopes[n]; if (!c) continue;
+      const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+      if (!r.width) continue;
+      const W = Math.round(r.width * d), H = Math.round(r.height * d);
+      if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+      const x = c.getContext('2d'), shape = state['lfo' + n + 'shape'] || 0, on = !!state['lfo' + n + 'target'];
+      const from = state['lfo' + n + 'from'], to = state['lfo' + n + 'to'];
+      const Y = y => H - 4 * d - (from + (to - from) * y) * (H - 8 * d);
+      x.clearRect(0, 0, W, H);
+      x.fillStyle = 'rgba(143,216,247,.12)'; x.fillRect(0, Y(1), W, 1); x.fillRect(0, Y(0), W, 1);
+      x.strokeStyle = on ? '#009ddc' : 'rgba(143,216,247,.35)'; x.lineWidth = 1.6 * d;
+      x.beginPath();
+      for (let i = 0; i <= 120; i++) { const ph = i / 120, yy = Y(lfoShapeAt(shape, Math.min(0.9999, ph))); i ? x.lineTo(ph * W, yy) : x.moveTo(0, yy); }
+      x.stroke();
+      if (on && lfoLive && lfoLive.t[n - 1]) {
+        const ph = lfoLive.ph[n - 1], yy = Y(lfoLive.y[n - 1]);
+        x.fillStyle = '#fff'; x.shadowColor = '#009ddc'; x.shadowBlur = 8 * d;
+        x.beginPath(); x.arc(ph * W, yy, 3 * d, 0, 2 * Math.PI); x.fill(); x.shadowBlur = 0;
+      }
+    }
   }
   const spec = document.getElementById('spec'), axis = document.getElementById('axis');
   const sx = spec.getContext('2d'), ax = axis.getContext('2d');
@@ -684,7 +828,7 @@ select:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-o
   const slow = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last = 0;
   function frame(t) {
-    runLanes(t);
+    drawScopes();
     if (!slow || t - last > 250) {
       // 3 s across the canvas width
       const dt = last ? Math.min(0.1, (t - last) / 1000) : 1 / 60; last = t;

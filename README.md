@@ -13,8 +13,9 @@ research brief*.
 
 Open `tools/dolphin.html` in a current browser and press **Power on**. Play with the computer
 keyboard (Ableton layout: `A`–`;` white keys, `W E T Y U O P` black keys, `Z`/`X` octave,
-`C`/`V` velocity) or click the keys. The bench also has the test presets, two automation lanes
-and a pitch-bend slider.
+`C`/`V` velocity) or click the keys. The **Modulation** page has four LFOs; each moves one knob
+between a From and a To value, free or synced to tempo, and does no work while its target is None.
+The bench also has the test presets and a pitch-bend slider.
 
 Rebuild it after changing the engine: `node tools/bench/build.js`.
 

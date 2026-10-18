@@ -24,7 +24,9 @@ class DolphinProcessor extends AudioWorkletProcessor {
     if (this.vizCount >= this.vizEvery) {
       this.vizCount = 0;
       const i = this.eng.info;
-      this.port.postMessage({ t: 'stat', voices: i.voices, rate: i.rate, whistle: i.whistle, click: this.eng.clickFc });
+      const e = this.eng;
+      this.port.postMessage({ t: 'stat', voices: i.voices, rate: i.rate, whistle: i.whistle, click: e.clickFc,
+        lfo: { t: Array.from(e.lfoTarget), ph: Array.from(e.lfoPhase), y: Array.from(e.lfoSm) } });
     }
     return true;
   }
